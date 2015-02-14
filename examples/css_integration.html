@@ -8,6 +8,10 @@
     <link rel='stylesheet' href='//cdn.jsdelivr.net/foundation/5.0.2/css/foundation.min.css'>
     <!-- Font Awesome icons (Bootstrap, Foundation, and jQueryUI also supported) -->
     <link rel='stylesheet' href='//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.0.3/css/font-awesome.css'>
+
+    <link rel='stylesheet' href='http://cdnjs.cloudflare.com/ajax/libs/epiceditor/0.2.2/themes/editor/epic-dark.css'>
+
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/epiceditor/0.2.2/js/epiceditor.min.js"></script>
     
     <script src="../dist/jsoneditor.js"></script>
     
@@ -60,6 +64,9 @@
     </div>
     
     <script>
+      var epicPath = 'http://cdnjs.cloudflare.com/ajax/libs/epiceditor/0.2.2';
+      JSONEditor.plugins.epiceditor.basePath = epicPath;
+
       // This is the starting value for the editor
       // We will use this to seed the initial editor 
       // and to provide a "Restore to Default" button.
@@ -92,12 +99,12 @@
         
         // The schema for the editor
         schema: {
-          $ref: "person.json",
+          $ref: "lesson.json",
           format: "grid"
-        },
-        
+        }
+        //,        
         // Seed the form with a starting value
-        startval: starting_value
+        //startval: starting_value
       });
       
       // Hook up the submit button to log to the console

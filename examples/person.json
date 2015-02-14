@@ -6,10 +6,11 @@
       "title": "Location",
       "properties": {
         "city": {
-          "type": "string"
+          "type": "string",
+          "format": "markdown"
         },
         "state": {
-          "type": "string"
+          "type": "string"          
         },
         "citystate": {
           "type": "string",

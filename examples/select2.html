@@ -2,83 +2,283 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>JSON Editor Select2 Integration Example</title>
+    <title>SpaceMiner World Editor</title>
     <script src="../dist/jsoneditor.js"></script>
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
     <script src="//cdn.jsdelivr.net/select2/3.4.8/select2.min.js"></script>
     <link rel="stylesheet" href="//cdn.jsdelivr.net/select2/3.4.8/select2.css">
+    <script src='//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.7.0/underscore-min.js'></script>
+    <script src='//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js'></script>
+    <link rel='stylesheet' href='//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css'>
+    <link rel='stylesheet' href='//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css'>
+    <style type='text/css'>
+body {
+  padding: 5px;
+}
+
+.select2-container.form-control {
+    height: 58px;
+}
+
+.select2-container .select2-choice {
+    padding: 2px;
+    padding-right: 4px;
+    padding-bottom: 2px;
+    height: 20px;
+    vertical-align: middle;
+    background-color: black;
+    display: table-cell;
+}    
+    </style>
   </head>
   <body>
-    <h1>JSON Editor Select2 Integration Example</h1>
-    
-    <p style='margin-bottom:20px;'>This example demonstrates JSONEditor's integration with Select2</p>
-    
-    <div id='editor_holder'></div>
-    <button id='submit'>Submit (console.log)</button>
+
+    <div id='editor_holder'></div>    
+    <button id='submit'>Show world code in console</button>
     
     <script>
-    // Global Select2 options
-    JSONEditor.plugins.select2.width = "300px";
-    
-      // Initialize the editor with a JSON schema
-      var editor = new JSONEditor(document.getElementById('editor_holder'),{
-        schema: {
-          type: "object",
-          title: "Text",
-          required: ["fontSize","color","font","weight","possibleFonts"],
-          properties: {
-            fontSize: {
-              type: "integer",
-              enum: [10,11,12,14,16,18,20,22,24,36,48,60,72,100],
-              default: 24,
-              options: {
-                // Override defaullt options
-                select2_options: {
-                  width: 'off'
-                }
-              }
+var schema = {
+  type: "object",
+  title: "SpaceMiner world settings",
+  options: { disable_collapse: true, collapsed: false },
+  properties: {
+    "basics": {
+      "type": "object",
+      "title": "Basic settings",
+      "description": "Specify world and player properties and behaviors",
+      "options" : { collapsed: true },
+      "properties": {
+        "worldName": {
+          "type": "string",
+          "title": "World name",
+          "description": "Your world's name",
+          "minLength": 3,
+          "maxLength": 25,
+          "default": "Space Miner"
+        },
+        "explorerName": {
+          "type": "string",
+          "title": "Explorer name",
+          "description": "Claim yourself as this world's explorer!",
+          "default": "Ninja Coder",
+          "minLength": 2,
+          "maxLength": 50
+        },
+        "numberOfLives": {
+          "type": "integer",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 10,
+          "title": "Number of lives",
+          "description": "Specifies the number of times miners can come back to life after enemies destroy them",
+          "headerTemplate": "Number of lives: {{self}}",
+          "format": "range"
+        }
+      }
+    },
+    "enemy": {
+      "type": "object",
+      "title": "Enemy settings",
+      "description": "Specify enemy properties and behaviors",
+      "options" : { collapsed: true },
+      "properties": {
+        "speedInitial": {
+          "type": "integer",
+          "title": "Initial speed",
+          "headerTemplate": "Initial speed: {{self}}",
+          "description": "The speed that enemies will move around when the world starts or resets",
+          "default": 50,
+          "minimum": 30,
+          "maximum": 500,
+          "multipleOf": 10,
+          "format": "range"
+        },        
+        "respawn": {
+          "type": "boolean",      
+          "title": "Enemies respawn?",
+          "description": "When true, enemies will come back to life after you shoot them",
+          "default": true          
+        },
+        "speedIncreaseBy": {
+          "type": "integer",
+          "title": "Speed to add after respawning",
+          "headerTemplate": "Speed to add after respawning: {{self}}",
+          "default": 0,
+          "description": "Specify how much additional speed the enemy will have each time it respawns after getting destroyed",
+          "minimum": 0,
+          "maximum": 100,
+          "multipleOf": 5,          
+          "format": "range"
+        }
+      }
+    },
+    "collisions": {
+      "type": "object",
+      "title": "Collision settings",
+      "options" : { collapsed: true },            
+      "description": "Specify what happens when collisions happen in your world",
+      "properties": {
+        "coin": {
+          "type": "object",
+          "title": "Coin",
+          "description": "Specify what happens when you bump into coins",
+          "properties": {
+            "scoreInc": {
+              "type": "integer",
+              "title": "Points to add",
+              "headerTemplate": "Points to add: {{self}}",
+              "description": "Between 5 and 500",
+              "default": 50,
+              "minimum": 5,
+              "maximum": 500,
+              "format": "range"
             },
-            color: {
-              type: "string",
-              enum: ["black","red","green","blue","yellow","orange","purple","brown","white","cyan","maagenta"]
-            },
-            font: {
-              type: "string",
-              enumSource: "possible_fonts",
-              watch: {
-                "possible_fonts": "root.possibleFonts"
-              },
-            },
-            weight: {
-              type: "string",
-              enum: ["normal","bold","bolder","lighter"],
-              options: {
-                enum_titles: ["Normal (400)","Bold (700)","Bolder (900)","Lighter (200)"]
-              }
-            },
-            possibleFonts: {
-              type: "array",
-              format: 'table',
-              items: {
-                type: "string"
-              },
-              default: ["Arial","Times","Helvetica","Comic Sans"],
-              options: {
-                collapsed: true
-              }
+            "soundPlay": {
+              "type": "string",
+              "title": "Sound to play"
             }
           }
         },
-        startval: {
-          color: "red"
+        "gem": {
+          "type": "object",
+          "title": "Gem",
+          "description": "Specify what happens when you bump into gems",          
+          "properties": {
+            "scoreInc": {
+              "type": "integer",
+              "title": "Ammo to add",
+              "headerTemplate": "Ammo to add: {{self}}",
+              "description": "Between 1 and 8",
+              "default": 1,
+              "minimum": 1,
+              "maximum": 8,
+              "format": "range"
+            },
+            "soundPlay": {
+              "type": "string"
+            }
+          }
         }
-      });
-      
-      // Hook up the submit button to log to the console
-      document.getElementById('submit').addEventListener('click',function() {
-        // Get the value from the editor
-        console.log(editor.getValue());
-      });
+      }
+    },
+    'sprites': {
+      'type': 'object',
+      "options" : { collapsed: true },            
+      'title': 'Sprite settings',
+      'description': 'Specify the sprites that will populate your world map',
+      'properties': {}
+    }
+  }
+};
+
+var spriteParts = [
+    {
+        "part": "coin",
+        "choices": [
+            "coin/blue.png",
+            "coin/brown.png",
+            "coin/gold.png",
+            "coin/green.png",
+            "coin/light.png",
+            "coin/pink.png"
+        ],
+        "sort": 4,
+        "selected": "coin/blue.png",
+        "_id": "tecyuojMfhZcD3juN"
+    },
+    {
+        "part": "enemy",
+        "choices": [
+            "enemy/brainBlue.png",
+            "enemy/brainPink.png",
+            "enemy/cyclopsRed.png",
+            "enemy/cyclopsYellow.png",
+            "enemy/goonGreen.png",
+            "enemy/goonPurple.png"
+        ],
+        "sort": 2,
+        "selected": "enemy/brainBlue.png",
+        "_id": "dZHGBrPzZQHQe7u4s"
+    },
+    {
+        "part": "gem",
+        "choices": [
+            "gem/brightGem.png",
+            "gem/diamondDark.png",
+            "gem/diamondLight.png",
+            "gem/emerald.png",
+            "gem/pinkGem.png",
+            "gem/ruby.png"
+        ],
+        "sort": 3,
+        "selected": "gem/brightGem.png",
+        "_id": "XoaxfJzuvq6izAjDF"
+    },
+    {
+        "part": "player",
+        "choices": [
+            "player/dark.png",
+            "player/light.png",
+            "player/dark.png",
+            "player/light.png",
+            "player/dark.png",
+            "player/light.png"
+        ],
+        "sort": 1,
+        "selected": "player/dark.png",
+        "_id": "3cABCsJm8FTAoykEL"
+    },
+    {
+        "part": "tile",
+        "choices": [
+            "tile/fiery.png",
+            "tile/golden.png",
+            "tile/plasma.png",
+            "tile/rockSmooth.png",
+            "tile/rockSpeckled.png",
+            "tile/rockSwirly.png"
+        ],
+        "sort": 5,
+        "selected": "tile/fiery.png",
+        "_id": "7tCygfFtpHcHdrtXq"
+    }
+];
+
+_.each(spriteParts, function(item, index) {
+  schema.properties.sprites.properties[item.part] = {
+    title: item.part[0].toUpperCase() + item.part.substring(1),
+    type: 'string',
+    enum: item.choices
+  }
+});
+
+// Initialize the editor with a JSON schema
+var editor = new JSONEditor(document.getElementById('editor_holder'),{
+  schema: schema,
+  theme: 'bootstrap3',
+  iconlib: 'fontawesome4',
+  disable_edit_json: true,
+  disable_properties: true,
+  collapsed: true
+});
+
+function formatImage(val) {
+  return "<img src='http://spaceminer.mod.bz/images/spriteParts/" + val.id + "' alt='" + val.id.split('/')[1] + "' title='" + val.id.split('/')[1] + "' />";
+}
+
+// Hook up the submit button to log to the console
+document.getElementById('submit').addEventListener('click',function() {
+  // Get the value from the editor
+  console.log(editor.getValue());
+});
+
+_.each(schema.properties.sprites.properties, function(item, key) {
+  $(editor.editors['root.sprites.' + key].select2).select2({
+    formatResult: formatImage,
+    formatSelection: formatImage,
+    escapeMarkup: function(m) { return m; }
+  });
+});
     </script>
   </body>
 </html>
