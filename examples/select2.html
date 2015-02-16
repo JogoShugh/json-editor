@@ -93,51 +93,60 @@ body {
     <div id='editor_holder'></div>    
     <button id='submit'>Show world code in console</button>
     
+    <div class="modal fade" id="tileDialog" tabindex="-1" role="dialog" aria-labelledby="tileDialogLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            <h4 class="modal-title" id="tileDialogLabel">Select tile</h4>
+          </div>       
+          
+          <div class="modal-body">          
+            <img id="tileTile" class="tileSelector" data-spriteLetter="t" />&nbsp;
+            <img id="tileCoin" class="tileSelector" data-spriteLetter="c" />&nbsp;
+            <img id="tileGem" class="tileSelector" data-spriteLetter="g" />&nbsp;
+            <img id="tileEnemy" class="tileSelector" data-spriteLetter="e" />&nbsp;
+            <img id="tilePlayer" class="tileSelector" data-spriteLetter="p" />&nbsp;
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
 /* begin editor */
 
 JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
-  build: function() {
-
-    var defaults = {
+  getDefaults: function(world, sprites) {
+    return {
       worldName : "Space Miner",
       explorerName : "Ninja Coder",
       numberOfLives : 1,
       enableEnemyRespawn : true,
-      sprites: {
+      sprites: sprites || {
         tile: "plasma.png",
         enemy: "brainBlue.png",
         coin: "blue.png",
         gem: "pinkGem.png",
         player: "dark.png"
       },
-      world: [
-        ['e', 'g', 'c', 'c', 'c', 'e', 'g', 'c', 'c', 'c', 'e', 'g', 'c', 'c', 'c', 'c', 'c', 'c', 'g'],
-        ['c', 'c', 't', 't', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 't', 't', 't', 'c', 't', 'c'],
-        ['c', 'c', 't', 't', 'c', 't', 'g', 't', 't', 't', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
-        ['c', 'c', 't', 't', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
-        ['c', 'c', 't', 'c', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
-        ['c', 'c', 'g', 't', 'c', 't', 'c', 'c', 'c', 'g', 't', 't', 'c', 'c', 't', 't', 't', 't', 'c'],
-        ['c', 'c', 't', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 't', 'c', 'c', 'c', 'c', 'g', 't', 'c'],
-        ['c', 'c', 't', 't', 'c', 'c', 'g', 'c', 'c', 'c', 't', 't', 'c', 't', 't', 't', 't', 't', 'c'],
-        ['c', 'c', 'c', 't', 'c', 't', 't', 't', 'c', 'c', 'c', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
-        ['c', 'c', 't', 'c', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
-        ['c', 'c', 'c', 'c', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 't', 'c', 't', 'c'],
-        ['c', 'c', 'p', 't', 'c', 'c', 'c', 'c', 'c', 'c', 'e', 't', 'c', 'c', 'c', 't', 'g', 't', 'g'],
-      ],
+      world: world,
       drawWorldCell: function(cell, rowNum, cellNum) {
         var spritesMap = {
-        t : 'tile',
-        p : 'player',
-        e : 'enemy',
-        g : 'gem',
-        c : 'coin'
+          t : 'tile',
+          p : 'player',
+          e : 'enemy',
+          g : 'gem',
+          c : 'coin'
         };
-        var spriteName = this.sprites[spritesMap[cell]];
+        var spriteName = sprites[spritesMap[cell]];
         if (!spriteName) {
-          spriteName = defaults.sprites[spritesMap[cell]];
+          spriteName = this.sprites[spritesMap[cell]];
         }
-        var file = spritesMap[cell] + '/' + spriteName;
+        //var file = spritesMap[cell] + '/' + spriteName;
+        var file = spriteName;
         return '<span class="worldCell" data-coords="' + rowNum + ':' + cellNum + '" style="background-image: url(http://spaceminer.mod.bz/images/spriteParts/' + file + ');"></span>';
       },
       drawWorldRow: function(row, rowNum) {
@@ -155,7 +164,7 @@ JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
         if (world.length === 0) {
           world = defaults.world;
         }
-        var worldCopy = JSON.parse(JSON.stringify(defaults.world));
+        var worldCopy = JSON.parse(JSON.stringify(this.world));
 
         function copyRow(rowSource, rowTarget) {
           rowSource.forEach(function(cell, index) {
@@ -185,37 +194,66 @@ JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
         return worldHtml;
       }
     };
-
+  },
+  build: function() {
     var worldContainer = $("<div></div>");
-    worldContainer.append(defaults.drawWorld(defaults.world));
-
-    worldContainer.find('.worldCell').click(function() {
-      alert('here we are');
-    });
-    
+    this.worldContainer = worldContainer;
+    this.worldContainer.append($("<div></div>"));
     this.control = this.theme.getFormControl(this.label, worldContainer[0], this.description);
-    this.container.appendChild(this.control);
+    this.container.appendChild(this.control);  
+    var that = this;
+    this.jsoneditor.watch('root.sprites', function() {
+      that.refreshValue();
+    });
+  },
+  refreshValue: function() {
+    var spritesEditor = this.jsoneditor.getEditor('root.sprites');
+    var val = this.getValue();
+    var that = this;
+    var sprites = spritesEditor.getValue();
 
-    this.refreshValue();
+    this.worldContainer.empty();
+    this.worldContainer.append(this.getDefaults(val, sprites).drawWorld(val));    
+    
+    this.worldContainer.find('.worldCell').click(function() {
+      var sprites = spritesEditor.getValue();
+      var clicked = this;
+
+      var spriteSrc = 'http://spaceminer.mod.bz/images/spriteParts/';
+      $("#tileTile").attr('src', spriteSrc + sprites.tile);
+      $("#tileCoin").attr('src', spriteSrc + sprites.coin);
+      $("#tileGem").attr('src', spriteSrc + sprites.gem);
+      $("#tileEnemy").attr('src', spriteSrc + sprites.enemy);    
+      $("#tilePlayer").attr('src', spriteSrc + sprites.player);
+
+      $('[class=tileSelector]').off('click');
+      $('[class=tileSelector]').on('click', function() {
+        var pos = $(clicked).attr('data-coords').split(':');
+        var row = Number(pos[0]),
+            col = Number(pos[1]);
+        row--;
+        col--;
+        var spriteLetter = $(this).attr('data-spriteLetter');
+        var world = that.value;
+        world[row][col] = spriteLetter;
+        that.setValue(world);
+        $('#tileDialog').modal('hide');
+        /*
+        board[row][col] = spriteLetter;
+        var text = boardToText(board);      
+        var editor = ace.edit('levelBoard');
+        editor.getSession().setValue(text);
+        editor.resize();
+        updateLevelPreviews();
+        */
+      });
+
+      $('#tileDialog').modal('show');    
+    });
   },
   setValue: function(val) {
-    /*
-    var sanitized = this.sanitize(val);
-    if(this.value === sanitized) {
-      return;
-    }
-    var self = this;
-    _.each(this.inputs,function(i,input) {
-      if (input.value === sanitized) {
-        input.checked = true;
-        self.value = sanitized;
-        self.input.value = self.value;
-        self.watch_listener();
-        self.jsoneditor.notifyWatchers(self.path);
-        return false;
-      }
-    });
-    */
+    this.value = val;
+    this.refreshValue();
   }
 });
 
@@ -358,7 +396,21 @@ var schema = {
     },
     world: {
       type: "array",
-      format: "world"
+      format: "world",
+      default: [
+        ['e', 'g', 'c', 'c', 'c', 'e', 'g', 'c', 'c', 'c', 'e', 'g', 'c', 'c', 'c', 'c', 'c', 'c', 'g'],
+        ['c', 'c', 't', 't', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 't', 't', 't', 'c', 't', 'c'],
+        ['c', 'c', 't', 't', 'c', 't', 'g', 't', 't', 't', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
+        ['c', 'c', 't', 't', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
+        ['c', 'c', 't', 'c', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
+        ['c', 'c', 'g', 't', 'c', 't', 'c', 'c', 'c', 'g', 't', 't', 'c', 'c', 't', 't', 't', 't', 'c'],
+        ['c', 'c', 't', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 't', 'c', 'c', 'c', 'c', 'g', 't', 'c'],
+        ['c', 'c', 't', 't', 'c', 'c', 'g', 'c', 'c', 'c', 't', 't', 'c', 't', 't', 't', 't', 't', 'c'],
+        ['c', 'c', 'c', 't', 'c', 't', 't', 't', 'c', 'c', 'c', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
+        ['c', 'c', 't', 'c', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
+        ['c', 'c', 'c', 'c', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 't', 'c', 't', 'c'],
+        ['c', 'c', 'p', 't', 'c', 'c', 'c', 'c', 'c', 'c', 'e', 't', 'c', 'c', 'c', 't', 'g', 't', 'g']
+      ]
     }    
   }
 };
