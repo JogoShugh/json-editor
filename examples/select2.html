@@ -12,6 +12,10 @@
     <link rel='stylesheet' href='//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css'>
     <link rel='stylesheet' href='//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css'>
     <script data-require="handlebars.js@1.3.0" data-semver="1.3.0" src="//cdnjs.cloudflare.com/ajax/libs/handlebars.js/1.3.0/handlebars.js"></script>
+    <script src='//cdn.jsdelivr.net/ace/1.1.8/min/ace.js'></script>
+    <script src='//cdn.jsdelivr.net/ace/1.1.8/min/ext-beautify.js'></script>
+    <script src='//cdn.jsdelivr.net/ace/1.1.8/min/mode-javascript.js'></script>
+    <script src='//cdn.jsdelivr.net/ace/1.1.8/min/theme-monokai.js'></script>
     <style>
 .worldContainer {
   text-align: center;
@@ -57,7 +61,15 @@
   color: black;
   background-color: white;
   opacity: .8;
-}    
+}
+
+#levelBoardCode { 
+    position: relative;
+    width: 632px;
+    height: 250px;
+}
+
+
     </style>
     <script id="templateHeader" type="text/x-handlebars-template">
 <section class='gameHeader'>
@@ -196,17 +208,66 @@ JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
     };
   },
   build: function() {
+    var that = this;
+
     var worldContainer = $("<div></div>");
     this.worldContainer = worldContainer;
     this.worldContainer.append($("<div></div>"));
     this.control = this.theme.getFormControl(this.label, worldContainer[0], this.description);
-    this.container.appendChild(this.control);  
-    var that = this;
-    this.jsoneditor.watch('root.sprites', function() {
+    this.container.appendChild(this.control);
+    this.container.appendChild($('<div class="editor" id="levelBoardCode"></div>')[0]);
+
+    var editor = ace.edit('levelBoardCode');
+    editor.setFontSize(16);
+    editor.setTheme('ace/theme/monokai');
+    editor.setHighlightActiveLine(true);
+    var session = editor.getSession();
+    session.setMode('ace/mode/text');
+
+    worldFromText = function(worldText) {
+        var world = _.map(worldText.split('\n'), function(row) {
+            row = row.toLowerCase();
+            var rowArray = row.split('');
+            if (rowArray.length > 19) {
+              rowArray = rowArray.slice(0, 19);
+            }
+            if (rowArray.length < 19) {
+              for(var i = rowArray.length; i < 19; i++) {
+                rowArray[i] = 't';
+              }
+            }
+
+            rowArray = _.map(rowArray, function(cell) {
+              if ('tacgep'.indexOf(cell) < 0) {
+                return 't';
+              } else {
+                return cell;
+              }
+            });
+
+            return rowArray;
+        });
+        if (world.length > 12) world = world.slice(0, 12);
+        return world;
+    };
+
+    var timeoutId = null;
+    function onChange() {
+        if (timeoutId !== null) clearTimeout(timeoutId);
+        timeoutId = setTimeout(function() {
+            var world = worldFromText(editor.getValue());            
+            that.setValue(world);
+        }, 1250);
+    }
+
+    editor.on('change', onChange, 1000);
+
+    that.jsoneditor.watch('root.sprites', function() {
       that.refreshValue();
     });
   },
   refreshValue: function() {
+
     var spritesEditor = this.jsoneditor.getEditor('root.sprites');
     var val = this.getValue();
     var that = this;
@@ -214,6 +275,21 @@ JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
 
     this.worldContainer.empty();
     this.worldContainer.append(this.getDefaults(val, sprites).drawWorld(val));    
+
+    var editor = ace.edit('levelBoardCode');
+    var session = editor.getSession();
+
+    var worldData = '';
+    _.each(val, function(row) {
+      _.each(row, function(cell) {
+        worldData += cell;
+      });
+      worldData += '\n';
+    });
+
+    worldData = worldData.substring(0, worldData.length - 1);
+
+    if (session.getValue() !== worldData) session.setValue(worldData);
     
     this.worldContainer.find('.worldCell').click(function() {
       var sprites = spritesEditor.getValue();
@@ -235,8 +311,9 @@ JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
         col--;
         var spriteLetter = $(this).attr('data-spriteLetter');
         var world = that.value;
-        world[row][col] = spriteLetter;
+        world[row][col] = spriteLetter;        
         that.setValue(world);
+        $('#')
         $('#tileDialog').modal('hide');
         /*
         board[row][col] = spriteLetter;
@@ -389,6 +466,7 @@ var schema = {
     },
     sprites: {
       'type': 'object',
+      format: 'grid',
       "options" : { collapsed: true },            
       'title': 'Sprite settings',
       'description': 'Specify the sprites that will populate your world map',
