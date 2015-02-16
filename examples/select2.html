@@ -11,6 +11,63 @@
     <script src='//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js'></script>
     <link rel='stylesheet' href='//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css'>
     <link rel='stylesheet' href='//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css'>
+    <script data-require="handlebars.js@1.3.0" data-semver="1.3.0" src="//cdnjs.cloudflare.com/ajax/libs/handlebars.js/1.3.0/handlebars.js"></script>
+    <style>
+.worldContainer {
+  text-align: center;
+}
+
+.worldMap {
+  display: table;
+  border-collapse: collapse;
+  border: none;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 5px;
+}
+
+.worldRow {
+  display: table-row;
+  border: none;
+}
+
+.worldCell {
+  position: relative;
+  background-color: black;
+  height: 30px;
+  min-height: 30px;
+  width: 30px;
+  min-width: 30px;
+  text-align: center;
+  display: table-cell;  
+  border-collapse: collapse;
+}
+
+.worldCellBorder {
+  border: 1px solid lightgray;
+}
+
+.worldCellCoords:after {
+  position: relative;
+  top: 10px;
+  content: attr(data-coords);
+  padding: 1px;
+  font-size: 70%;
+  font-weight: bold;
+  color: black;
+  background-color: white;
+  opacity: .8;
+}    
+    </style>
+    <script id="templateHeader" type="text/x-handlebars-template">
+<section class='gameHeader'>
+  <h2>{{worldName}}</h2>
+  <h4>explored by {{explorerName}}</h4>
+  <div>Lives remaining: {{numberOfLives}}</div>
+  <div>Enemies respawn: {{toString enableEnemyRespawn}}</div>
+  <button class='btn btn-xs btn-primary' id='toggleGrid'>Toggle grid</button>&nbsp;<button class='btn btn-xs btn-primary' id='toggleCoords'>Toggle coordinates</button>
+</section>
+    </script>    
     <style type='text/css'>
 body {
   padding: 5px;
@@ -37,6 +94,137 @@ body {
     <button id='submit'>Show world code in console</button>
     
     <script>
+/* begin editor */
+
+JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
+  build: function() {
+
+    var defaults = {
+      worldName : "Space Miner",
+      explorerName : "Ninja Coder",
+      numberOfLives : 1,
+      enableEnemyRespawn : true,
+      sprites: {
+        tile: "plasma.png",
+        enemy: "brainBlue.png",
+        coin: "blue.png",
+        gem: "pinkGem.png",
+        player: "dark.png"
+      },
+      world: [
+        ['e', 'g', 'c', 'c', 'c', 'e', 'g', 'c', 'c', 'c', 'e', 'g', 'c', 'c', 'c', 'c', 'c', 'c', 'g'],
+        ['c', 'c', 't', 't', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 't', 't', 't', 'c', 't', 'c'],
+        ['c', 'c', 't', 't', 'c', 't', 'g', 't', 't', 't', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
+        ['c', 'c', 't', 't', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
+        ['c', 'c', 't', 'c', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
+        ['c', 'c', 'g', 't', 'c', 't', 'c', 'c', 'c', 'g', 't', 't', 'c', 'c', 't', 't', 't', 't', 'c'],
+        ['c', 'c', 't', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 't', 'c', 'c', 'c', 'c', 'g', 't', 'c'],
+        ['c', 'c', 't', 't', 'c', 'c', 'g', 'c', 'c', 'c', 't', 't', 'c', 't', 't', 't', 't', 't', 'c'],
+        ['c', 'c', 'c', 't', 'c', 't', 't', 't', 'c', 'c', 'c', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
+        ['c', 'c', 't', 'c', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
+        ['c', 'c', 'c', 'c', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 't', 'c', 't', 'c'],
+        ['c', 'c', 'p', 't', 'c', 'c', 'c', 'c', 'c', 'c', 'e', 't', 'c', 'c', 'c', 't', 'g', 't', 'g'],
+      ],
+      drawWorldCell: function(cell, rowNum, cellNum) {
+        var spritesMap = {
+        t : 'tile',
+        p : 'player',
+        e : 'enemy',
+        g : 'gem',
+        c : 'coin'
+        };
+        var spriteName = this.sprites[spritesMap[cell]];
+        if (!spriteName) {
+          spriteName = defaults.sprites[spritesMap[cell]];
+        }
+        var file = spritesMap[cell] + '/' + spriteName;
+        return '<span class="worldCell" data-coords="' + rowNum + ':' + cellNum + '" style="background-image: url(http://spaceminer.mod.bz/images/spriteParts/' + file + ');"></span>';
+      },
+      drawWorldRow: function(row, rowNum) {
+        var rowHtml = "<div class='worldRow'>";
+        var that = this;
+        row.forEach(function(cell, cellNum) {
+          rowHtml += that.drawWorldCell(cell, rowNum, cellNum);
+        });
+        return rowHtml + '</div>\n';
+      },
+      drawWorld: function(world) {
+        var worldHtml = '';
+        var that = this;
+        if (!_.isArray(world)) throw "world must be a valid array";
+        if (world.length === 0) {
+          world = defaults.world;
+        }
+        var worldCopy = JSON.parse(JSON.stringify(defaults.world));
+
+        function copyRow(rowSource, rowTarget) {
+          rowSource.forEach(function(cell, index) {
+            rowTarget[index] = cell;
+          });
+        }
+        if (_.isArray(world[0])) {
+          world.forEach(function(row, rowIndex) {
+            copyRow(row, worldCopy[rowIndex]);
+          });
+        } else {
+          copyRow(world, worldCopy[0]);
+        }
+        // Now assure left and right borders are all tiles
+        worldCopy.forEach(function(row) {
+          row.push('t');
+          row.unshift('t');
+        });
+        // And, the top and bottom rows are all tiles
+        var borderRow = 'ttttttttttttttttttttt'.split('');
+        worldCopy.push(borderRow);
+        worldCopy.unshift(borderRow);
+
+        worldCopy.forEach(function(row, rowNum) {
+          worldHtml += that.drawWorldRow(row, rowNum);
+        });
+        return worldHtml;
+      }
+    };
+
+    var worldContainer = $("<div></div>");
+    worldContainer.append(defaults.drawWorld(defaults.world));
+
+    worldContainer.find('.worldCell').click(function() {
+      alert('here we are');
+    });
+    
+    this.control = this.theme.getFormControl(this.label, worldContainer[0], this.description);
+    this.container.appendChild(this.control);
+
+    this.refreshValue();
+  },
+  setValue: function(val) {
+    /*
+    var sanitized = this.sanitize(val);
+    if(this.value === sanitized) {
+      return;
+    }
+    var self = this;
+    _.each(this.inputs,function(i,input) {
+      if (input.value === sanitized) {
+        input.checked = true;
+        self.value = sanitized;
+        self.input.value = self.value;
+        self.watch_listener();
+        self.jsoneditor.notifyWatchers(self.path);
+        return false;
+      }
+    });
+    */
+  }
+});
+
+JSONEditor.defaults.resolvers.unshift(function(schema) {
+  if(schema.type === "array" && schema.format === "world") return "world";
+});
+
+/* end editor */
+
 var schema = {
   type: "object",
   title: "SpaceMiner world settings",
@@ -54,7 +242,7 @@ var schema = {
           "description": "Your world's name",
           "minLength": 3,
           "maxLength": 25,
-          "default": "Space Miner"
+          "placeholder": "Space Miner"
         },
         "explorerName": {
           "type": "string",
@@ -161,13 +349,17 @@ var schema = {
         }
       }
     },
-    'sprites': {
+    sprites: {
       'type': 'object',
       "options" : { collapsed: true },            
       'title': 'Sprite settings',
       'description': 'Specify the sprites that will populate your world map',
       'properties': {}
-    }
+    },
+    world: {
+      type: "array",
+      format: "world"
+    }    
   }
 };
 
