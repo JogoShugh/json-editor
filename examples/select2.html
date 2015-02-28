@@ -133,17 +133,6 @@ body {
 JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
   getDefaults: function(world, sprites) {
     return {
-      worldName : "Space Miner",
-      explorerName : "Ninja Coder",
-      numberOfLives : 1,
-      enableEnemyRespawn : true,
-      sprites: sprites || {
-        tile: "plasma.png",
-        enemy: "brainBlue.png",
-        coin: "blue.png",
-        gem: "pinkGem.png",
-        player: "dark.png"
-      },
       world: world,
       drawWorldCell: function(cell, rowNum, cellNum) {
         var spritesMap = {
@@ -224,7 +213,7 @@ JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
     var session = editor.getSession();
     session.setMode('ace/mode/text');
 
-    worldFromText = function(worldText) {
+    var worldFromText = function(worldText) {
         var world = _.map(worldText.split('\n'), function(row) {
             row = row.toLowerCase();
             var rowArray = row.split('');
@@ -255,8 +244,11 @@ JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
     function onChange() {
         if (timeoutId !== null) clearTimeout(timeoutId);
         timeoutId = setTimeout(function() {
-            var world = worldFromText(editor.getValue());            
+            var world = worldFromText(editor.getValue());
+            that.is_dirty = true;
             that.setValue(world);
+            that.watch_listener();
+            that.jsoneditor.notifyWatchers(this.path);
         }, 1250);
     }
 
@@ -266,13 +258,15 @@ JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
       that.refreshValue();
     });
   },
+  getValue: function() {
+    return this.value;
+  },
   refreshValue: function() {
 
     var spritesEditor = this.jsoneditor.getEditor('root.sprites');
     var val = this.getValue();
     var that = this;
     var sprites = spritesEditor.getValue();
-
     this.worldContainer.empty();
     this.worldContainer.append(this.getDefaults(val, sprites).drawWorld(val));    
 
@@ -295,6 +289,11 @@ JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
       var sprites = spritesEditor.getValue();
       var clicked = this;
 
+      var pos = $(clicked).attr('data-coords').split(':');
+      var row = Number(pos[0]),
+          col = Number(pos[1]);
+      if (row === 0 || row === 13 || col === 0 || col === 20) return;
+
       var spriteSrc = 'http://spaceminer.mod.bz/images/spriteParts/';
       $("#tileTile").attr('src', spriteSrc + sprites.tile);
       $("#tileCoin").attr('src', spriteSrc + sprites.coin);
@@ -304,13 +303,10 @@ JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
 
       $('[class=tileSelector]').off('click');
       $('[class=tileSelector]').on('click', function() {
-        var pos = $(clicked).attr('data-coords').split(':');
-        var row = Number(pos[0]),
-            col = Number(pos[1]);
-        row--;
-        col--;
         var spriteLetter = $(this).attr('data-spriteLetter');
         var world = that.value;
+        row--;
+        col--;
         world[row][col] = spriteLetter;        
         that.setValue(world);
         $('#')
@@ -329,8 +325,13 @@ JSONEditor.defaults.editors.world = JSONEditor.AbstractEditor.extend({
     });
   },
   setValue: function(val) {
-    this.value = val;
+    this.value = val;    
     this.refreshValue();
+    if(this.jsoneditor) {
+      this.jsoneditor.notifyWatchers(this.path);
+      if(this.parent) this.parent.onChildEditorChange(this);
+      else this.jsoneditor.onChange();
+    }    
   }
 });
 
@@ -476,7 +477,7 @@ var schema = {
       type: "array",
       format: "world",
       default: [
-        ['e', 'g', 'c', 'c', 'c', 'e', 'g', 'c', 'c', 'c', 'e', 'g', 'c', 'c', 'c', 'c', 'c', 'c', 'g'],
+        ['e', 'g', 'c', 'c', 'c', 'g', 'g', 'c', 'c', 'c', 'e', 'g', 'c', 'c', 'c', 'c', 'c', 'c', 'g'],
         ['c', 'c', 't', 't', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 't', 't', 't', 'c', 't', 'c'],
         ['c', 'c', 't', 't', 'c', 't', 'g', 't', 't', 't', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
         ['c', 'c', 't', 't', 'c', 't', 'c', 'c', 'c', 'c', 't', 't', 'c', 'c', 'c', 'c', 'c', 't', 'c'],
@@ -591,7 +592,28 @@ function formatImage(val) {
 // Hook up the submit button to log to the console
 document.getElementById('submit').addEventListener('click',function() {
   // Get the value from the editor
-  console.log(editor.getValue());
+  var val = editor.getValue();
+
+  var output = '';
+
+  var sprites = JSON.parse(JSON.stringify(val.sprites));
+  _.each(sprites, function(value, key) {
+    sprites[key] = value.substring(value.indexOf('/') + 1);
+  });
+
+  var worldRows = _.map(val.world, function(row) {
+    return row.join('');
+  });
+
+  output  += 'var worldName = "' + val.basics.worldName + '";\n'
+          + 'var explorerName = "' + val.basics.explorerName + '";\n'
+          + 'var numberOfLives = ' + val.basics.numberOfLives + ';\n'
+          + 'var enableEnemyRespawn = ' + val.enemy.respawn + ';\n'
+          + 'var sprites = ' + JSON.stringify(sprites, 2, '\t') + ';\n'
+          + 'var worldRows = ' + JSON.stringify(worldRows, 2, '\t') + ';\n';
+
+  console.log(output);          
+
 });
 
 _.each(schema.properties.sprites.properties, function(item, key) {
